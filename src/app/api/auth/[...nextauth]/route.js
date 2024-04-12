@@ -15,7 +15,8 @@ const handler = NextAuth(options);
 const prisma = new PrismaClient();
 
 // Email and Password, configures the adapter to use Prisma (ORM)
-export const authOptions = {
+//export 
+const authOptions = {
     adapter: PrismaAdapter(prisma),
 };
 
