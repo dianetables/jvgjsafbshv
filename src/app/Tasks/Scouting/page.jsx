@@ -4,12 +4,21 @@ import React, { useEffect, useState } from "react";
 import DisplayImage from "../../(components)/Scouting/DisplayImage";
 import OptionSelector from "../../(components)/Scouting/OptionSelector";
 
+
 const ScoutingPage = () => {
   // State hook for storing the array of images fetched from the API
   const [images, setImages] = useState([]);
 
-  // State hook for tracking the current index of the displayed image in the images array
-  const [currentIndex, setCurrentIndex] = useState(0);
+   // Retrieve the currentIndex from localStorage or default to 0 if not found
+   const [currentIndex, setCurrentIndex] = useState(() => {
+    const savedIndex = localStorage.getItem('lastViewedImage');
+    return savedIndex ? parseInt(savedIndex, 10) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lastViewedImage', currentIndex.toString());
+  }, [currentIndex]);
+
 
   // Fetches images from the '/api/images' endpoint when the page mounts
   useEffect(() => {
@@ -34,7 +43,7 @@ const ScoutingPage = () => {
 
           // Update state with fetched images
           setImages(data);
-
+          console.log("images", data);
           // Cache the fetched images along with a timestamp
           localStorage.setItem(
             "cachedImages",
@@ -75,6 +84,7 @@ const ScoutingPage = () => {
 
         // Parses the response data as JSON.
         const data = await response.json();
+     
 
         // Updates the currentIndex state to display the next image upon successful submission, cycling back to the first image if necessary.
         setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
@@ -102,34 +112,52 @@ const ScoutingPage = () => {
         </div>
 
         <button
-  onClick={() => {
-    fetch("/api/analysis/scouting")
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("GET request data:", data); // Log the data from GET request
+          onClick={() => {
+            fetch("/api/analysis/scouting")
+              .then(response => response.json())
+              .then(data => {
+                console.log("GET request data:", data); // Log the data from GET request
 
-        // Now that we have the data from the GET request, we make the POST request
-        fetch("/api/analysis/scouting", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          // Assuming 'data' from the GET request is the payload needed for the POST request
-          // Adjust the payload as necessary based on your API's expected request body structure
-          body: JSON.stringify({ acceptedValues: data }),
-        })
-          .then((postResponse) => postResponse.json())
-          .then((postData) => {
-            console.log("POST request response data:", postData); // Log the data from POST request
-          })
-          .catch((postError) => {
-            console.error("Error performing the POST request:", postError);
-          });
-      })
-      .catch((getError) => {
-        console.error("Error fetching the GET request data:", getError);
+                // Now that we have the data from the GET request, we make the POST request to the same endpoint
+                return fetch("/api/analysis/scouting", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  // Assuming 'data' from the GET request is the payload needed for the POST request
+                  body: JSON.stringify({ acceptedValues: data }),
+                });
+              })
+              .then(postResponse => postResponse.json())
+              .then(postData => {
+                console.log("POST request response data:", postData); // Log the data from POST request
+
+      // After the POST request to /api/analysis/scouting, make a POST request to /api/updateUserReliability
+      return fetch("/api/analysis/updateUserReliability", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+       
+        body: JSON.stringify({ acceptedRockCounts: postData.acceptedValues }),
       });
-  }}
+    })
+
+
+
+
+    .then(updateResponse => updateResponse.json())
+    .then(updateData => {
+      console.log("POST request to /api/updateUserReliability response data:", updateData); // Log the data from the second POST request
+    })
+
+
+
+
+    .catch(error => {
+      console.error("Error during the request chain:", error);
+    });
+}}
 >
   Aggregate
 </button>
